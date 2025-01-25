@@ -28,66 +28,76 @@ public class DriveSubsystem extends SubsystemBase{
     SwerveDrive swerveDrive;
     RobotConfig config;
 
+    //Creates swerve drive.
     public DriveSubsystem() throws IOException{
         File swerveJsonDirectory = new File(Filesystem.getDeployDirectory(),"swerve");
         swerveDrive = new SwerveParser(swerveJsonDirectory).createSwerveDrive(DriveConstants.maxSpeed);
         swerveDrive.swerveController.setMaximumChassisAngularVelocity(DriveConstants.maxAngularSpeed);
-
+    
+        //Constructor for the config.
         try{
             config = RobotConfig.fromGUISettings();
-          } catch (Exception e) {
+        } 
+            
+        catch (Exception e) {
             // Handle exception as needed
             e.printStackTrace();
-          }
+        }
 
-          AutoBuilder.configure(
+    // Configurates the autobuilder to the drive subsystem's methods regardig positions and speeds.
+        AutoBuilder.configure(
             this::getPose,
             this::resetPose,
             this::getRobotRelativeSpeeds,
             (speeds, feedforwards) -> driveRobotRelative(speeds),
+
             new PPHolonomicDriveController(
               new PIDConstants(5.0, 0.0, 0.0),
               new PIDConstants(5.0, 0.0, 0.0)
-              ),
-              config,
-              () -> {
-      
-      
+            ),
+        
+            config,
+            () -> {
+                //Checks if the alliance is Red or Blue.
                 var alliance = DriverStation.getAlliance();
                 if (alliance.isPresent()) {
                   return alliance.get() == DriverStation.Alliance.Red;
                 }
                 return false;
-              },
-                  this
-              );
-            }
+            },
+            this
+        );
+    }
                
-        public Command followPathCommand(String pathName) {
-          try{
+    //Command that makes robot follow the auto's path.
+    public Command followPathCommand(String pathName) {
+        try{
             PathPlannerPath path = PathPlannerPath.fromPathFile(pathName);
       
-      
             return AutoBuilder.followPath(path);
+        } 
+        
+        catch (Exception e) {
+            DriverStation.reportError("Big oops: " + e.getMessage(), e.getStackTrace());
+            return Commands.none();
+        }
+    }
 
-              } catch (Exception e) {
-        DriverStation.reportError("Big oops: " + e.getMessage(), e.getStackTrace());
-        return Commands.none();
-    }
-    }
-    public Command driveCommand(DoubleSupplier translationX, DoubleSupplier translationY, DoubleSupplier angularRotationX)
-    {
-      return run(() -> {
+    //Command that makes the robot drive.
+    public Command driveCommand(DoubleSupplier translationX, DoubleSupplier translationY, DoubleSupplier angularRotationX) {
+        return run(() -> {
         // Make the robot move
         swerveDrive.drive(new Translation2d(translationX.getAsDouble() * DriveConstants.maxSpeed,
-                                            translationY.getAsDouble() * DriveConstants.maxSpeed),
-                          angularRotationX.getAsDouble() * swerveDrive.getMaximumChassisAngularVelocity(),
-                          true,
-                          false);
-      });
+        translationY.getAsDouble() * DriveConstants.maxSpeed),
+        angularRotationX.getAsDouble() * swerveDrive.getMaximumChassisAngularVelocity(),
+        true,
+        false);
+        }
+        );
     }
 
-    public Command tune(DoubleSupplier translationX, DoubleSupplier translationY, DoubleSupplier angularRotationX){
+    //Command that tunes the robot's PIDF.
+    public Command tune(DoubleSupplier translationX, DoubleSupplier translationY, DoubleSupplier angularRotationX) {
         SmartDashboard.putNumber("SwerveModuleVelocitykP", 0);
         SmartDashboard.putNumber("SwerveModuleVelocitykI", 0);
         SmartDashboard.putNumber("SwerveModuleVelocitykD", 0);
@@ -121,23 +131,24 @@ public class DriveSubsystem extends SubsystemBase{
         );
     }
 
+    //Supplier: Gets position of robot.
     public Pose2d getPose() {
         return swerveDrive.getPose();
-      }
+    }
     
-    
-      public void resetPose(Pose2d pose) {
+    //Resets the odometry of robot.
+    public void resetPose(Pose2d pose) {
         swerveDrive.resetOdometry(pose);
-      }
+    }
     
-    
-      public ChassisSpeeds getRobotRelativeSpeeds() {
+    //Supplier: Gives the relative speeds of robot.
+    public ChassisSpeeds getRobotRelativeSpeeds() {
         return swerveDrive.getRobotVelocity();
-      }
+    }
     
-    
-      public void driveRobotRelative(ChassisSpeeds speeds) {
+    //Makes robot move with the relative speeds.
+    public void driveRobotRelative(ChassisSpeeds speeds) {
         swerveDrive.drive(speeds);
-      }
+    }
 
 }
